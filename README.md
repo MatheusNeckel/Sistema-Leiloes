@@ -25,4 +25,4 @@ Permite o **cadastro de produtos**, a **listagem de itens** e o **controle de ve
 ## ⚙️ Como executar
 1. Clone este repositório:
    ```bash
-   git clone https://github.com/seu-usuario/sistema-leiloes.git
+   git clone https://github.com/MatheusNeckel/Sistema-Leiloes.git
