@@ -1,0 +1,76 @@
+name: CI - Java (Ant/Maven/Gradle ou compilação direta)
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: |
+            21
+            17
+
+      - name: Descompactar projeto (se houver zip)
+        run: |
+          shopt -s nullglob
+          for z in *.zip */*.zip; do
+            echo "Encontrado ZIP: $z"
+            unzip -o "$z" -d .
+          done
+
+      - name: Detectar build tool
+        id: detect
+        run: |
+          if [ -f "pom.xml" ]; then
+            echo "tool=maven" >> $GITHUB_OUTPUT
+          elif [ -f "build.gradle" ] || [ -f "gradlew" ]; then
+            echo "tool=gradle" >> $GITHUB_OUTPUT
+          elif [ -f "build.xml" ]; then
+            echo "tool=ant" >> $GITHUB_OUTPUT
+          else
+            echo "tool=javac" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build com Maven
+        if: steps.detect.outputs.tool == 'maven'
+        run: mvn -B -DskipTests package
+
+      - name: Build com Gradle (wrapper se existir)
+        if: steps.detect.outputs.tool == 'gradle'
+        run: |
+          if [ -x "./gradlew" ]; then
+            ./gradlew build
+          else
+            sudo apt-get update && sudo apt-get install -y gradle
+            gradle build
+          fi
+
+      - name: Build com Ant
+        if: steps.detect.outputs.tool == 'ant'
+        run: |
+          sudo apt-get update && sudo apt-get install -y ant
+          ant clean dist
+
+      - name: Compilar com javac (sem ferramenta de build)
+        if: steps.detect.outputs.tool == 'javac'
+        run: |
+          mkdir -p out
+          find . -type f -name "*.java" > sources.txt
+          if [ -s sources.txt ]; then
+            javac -encoding UTF-8 -d out @sources.txt
+          else
+            echo "Nenhum .java encontrado. Verifique se o projeto foi extraído corretamente."
+            exit 1
+          fi
